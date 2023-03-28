@@ -1,7 +1,40 @@
 import argparse
-from flask import Flask
+from cam_capture import CameraCapture
+from cam_stream import CameraStream
+from cam_calib import CameraCalibration
+import threading
+import time
+import sys
 
-app = Flask(__name__)
+def run_arguments():
+    edge_length = None
+    n_height = None
+    n_width = None
+    save_calib = False
+    debug = False
+    
+    parser = argparse.ArgumentParser(description='Camera calibration script.')
+    parser.add_argument('-d', help='Enable debug options: delays, prints, debug windows.')
+    parser.add_argument('-s', '--edge_length', type=float, help='Edge length in cm')
+    parser.add_argument('-v', '--vertical_squares', type=int, help='Number of inner squares vertically.')
+    parser.add_argument('-hz', '--horizontal_squares', type=int, help='Number of inner squares horizontally.')
+    parser.add_argument('--save_calib', help='Save calibration images.')
+    
+    args = parser.parse_args()
+
+    # Assign passed values
+    if args.d != None:
+        debug = True
+    elif args.edge_length != None:
+        edge_length = args.edge_length
+    elif args.vertical_squares != None:
+        n_height = args.vertical_squares
+    elif args.horizontal_squares != None:
+        n_width = args.horizontal_squares
+    elif args.save_calib != None:
+        save_calib = True
+    
+    return debug, edge_length, n_height, n_width, save_calib
 
 def create_gstreamer_pipeline(
     sensor_id=0,
@@ -9,8 +42,8 @@ def create_gstreamer_pipeline(
     capture_height=1080,
     display_width=960,
     display_height=540,
-    framerate=30,
-    flip_method=0,
+    framerate=10,
+    flip_method=2,
 ):
     return (
         "nvarguscamerasrc sensor-id=%d !"
@@ -30,38 +63,53 @@ def create_gstreamer_pipeline(
         )
     )
 
-def run_arguments():
-    
-    edge_length = None
-    n_height = None
-    n_width = None
-    output_disp = False
-    
-    parser = argparse.ArgumentParser(description='Camera calibration script.')
-    parser.add_argument('--display_image', help='Display the camera image.')
-    parser.add_argument('-s', '--edge_length', type=float, help='Edge length in cm')
-    parser.add_argument('-h', '--height_squares', type=int, help='Number of inner squares vertically.')
-    parser.add_argument('-w', '--width_squares', type=int, help='Number of inner squares horizontally.')
-    
-    args = parser.parse_args()
-
-    # Assign passed values
-    if args.display_image:
-        output_disp = True
-    elif args.edge_length != None:
-        edge_length = args.edge_length
-    elif args.height_squares != None:
-        n_height = args.height_squares
-    elif args.width_squares != None:
-        n_width = args.width_squares
-    
-    return output_disp, edge_length, n_height, n_width
-
 if __name__ == "__main__":
     # Get runtime arguments
-    output_disp, edge_length, n_height, n_width = run_arguments()
+    debug, edge_length, n_height, n_width, save_calib = run_arguments()
+    
     # Create GStreamer pipeline
     g_pipe = create_gstreamer_pipeline()
 
-    cam_stream = CameraStream(g_pipe, True)
+    # Create Camera capture object
+    cam_cap = CameraCapture(g_pipe, debug=debug)
     
+    # Create streaming object
+    cam_stream = CameraStream(debug=debug)
+    
+    # Create camera calibration object
+    cam_calib = CameraCalibration(save_calib = True, debug=debug)
+        
+    # Start camera streaming
+    # Create a thread and attach the method that captures the image frames, to it
+    process_thread = threading.Thread(target=cam_stream.start, daemon=True)
+    
+    # Start the thread
+    process_thread.start()
+      
+    
+    # Collect enough images
+    while not cam_calib.finished_collecting_samples():
+        try:
+            original_frame = cam_cap.next_frame()
+            cam_calib.find_checkerboard_corners(original_frame)
+            ret, corner_frame = cam_calib.get_corner_image()
+            
+            if ret:
+                frame = cam_cap.encode_frame(frame=corner_frame)
+            else:
+                frame = cam_cap.encode_frame(frame=original_frame)
+            
+            cam_stream.push_frame(frame) 
+            
+            if debug:
+                time.sleep(1) 
+    # Perform calibration                
+        except KeyboardInterrupt:
+            cam_stream.stop()
+    
+    cam_calib.calibration(original_frame)
+    cam_stream.stop()
+
+    process_thread.join()
+    sys.exit(0)
+                

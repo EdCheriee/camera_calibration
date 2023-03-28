@@ -4,28 +4,42 @@ from queue import Queue
 
 lock = threading.Lock()
 
-app = Flask(__name__)
-
-
 class CameraStream():
-    def __init__(self, source_name: str, video_stream: str = '/', debug = False):
+    def __init__(self, video_stream: str = '/', port: int = 8000, debug = False):
         self.frame_q = Queue(maxsize=1)
-        self.source_name = source_name
         self.stream = False
+        self.port = port
         self.debug = debug
         self.video_stream = video_stream
+        self.app = Flask(__name__)
+        
+        @self.app.route('/' + self.video_stream)
+        def streaming():
+            return Response(self.generate_frame(), mimetype = "multipart/x-mixed-replace; boundary=frame")
     
     def start(self):
         self.stream = True
-        
+        self.run()
         
     def stop(self):
         self.stream = False
         self.frame_q.put(None)
+        self.app.do_teardown_appcontext()
+        print('Stopping stream...')
+        
+    def __del__(self):
+        self.stop()
+        
+    def run(self, host='0.0.0.0'):
+        self.app.run(host=host, port=self.port)
         
     def generate_frame(self):
         while self.stream:
-            frame = self.frame_q.get()
+            with lock:
+                if self.frame_q.empty():
+                    continue
+                frame = self.frame_q.get()
+                
             if frame is None:
                 break
             
@@ -34,10 +48,9 @@ class CameraStream():
         
     def push_frame(self, frame):
         with lock:
+            if self.frame_q.full():
+                self.frame_q.get()
             self.frame_q.put(frame)
             
-    def define_routes(self):
-        @app.route(self.video_stream)
-        def stream():
-            return Response(self.generate_frame(), mimetype = "multipart/x-mixed-replace; boundary=frame")
-                
+    
+            
