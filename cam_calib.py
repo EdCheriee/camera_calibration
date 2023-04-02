@@ -56,8 +56,8 @@ class CameraCalibration:
         
         # If corners are found, add object points and image points
         if ret == True:
-            if self.debug:
-                print("Found corners.")
+            # if self.debug:
+            print("Found corners.")
             self.objpoints.append(self.objp)
             corners2 = cv2.cornerSubPix(gray_scale_frame, corners, (11, 11), (-1, -1), self.criteria)
             self.imgpoints.append(corners2)
@@ -68,8 +68,8 @@ class CameraCalibration:
             self.draw_checkerboard_corners(gray_scale_frame, corners2, ret)
             self.found_corners = True
         else:
-            if self.debug:
-                print("Not found corners.")
+            # if self.debug:
+            print("Not found corners.")
 
     def calibration(self, frame):
         if len(frame.shape) > 2:
@@ -84,18 +84,38 @@ class CameraCalibration:
             self._save_calib(ret, camera_mtx, dist_coeffs, rvecs, tvecs)      
 
     def _save_calib(self, ret, cam_mat, dist_coef, rvecs, tvecs):
-        file_path = os.path.abspath(os.path.dirname(__file__))
-        calib_data_path = os.path.join(file_path, 'calib_data')
+        file_dir_path = os.path.abspath(os.path.dirname(__file__))
+        calib_data_path = os.path.join(file_dir_path, 'calib_data')
+
         
         if not os.path.exists(calib_data_path):
             os.mkdir(calib_data_path)
-        
-        # np.savetxt(calib_data_path + '/rms.txt', ret)
-        np.savetxt(calib_data_path + '/cam_matrix.txt', cam_mat, delimiter=',')
-        np.savetxt(calib_data_path + '/dist_coeffs.txt', dist_coef, delimiter=',')  
-        np.savetxt(calib_data_path + '/r_vecs.txt', rvecs, delimiter=',') 
-        np.savetxt(calib_data_path + '/t_vecs.txt', tvecs, delimiter=',') 
 
+        # Remove old files of previous calibrations
+        calibration_file_paths = self.check_for_calibration_files(root_folder_path=calib_data_path, remove_file=True)
+             
+        print('RMS: ', ret)
+        np.savetxt(calibration_file_paths[0], cam_mat, delimiter=',')
+        np.savetxt(calibration_file_paths[1], dist_coef, delimiter=',')  
+        np.savetxt(calibration_file_paths[2], rvecs, delimiter=',') 
+        np.savetxt(calibration_file_paths[3], tvecs, delimiter=',') 
+
+    def check_for_calibration_files(self, root_folder_path: str = '', remove_file: bool = False):
+        calibration_file_names = ['cam_matrix.txt', 'dist_coeffs.txt', 'r_vecs.txt', 't_vecs.txt']        
+        calibration_file_paths = []
+        
+        if not os.path.exists:
+            return None
+        
+        for file in calibration_file_names:
+            file_path = os.path.join(root_folder_path, file)
+            if os.path.exists(file_path) and remove_file:
+                os.remove(file_path)
+            calibration_file_paths.append(file_path)
+            
+        return calibration_file_paths
+    
+    
     def finished_collecting_samples(self):
         if self.image_counter >= self.calib_image_goal:
             if self.debug:

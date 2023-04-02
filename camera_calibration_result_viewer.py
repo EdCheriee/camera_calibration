@@ -1,40 +1,10 @@
-import argparse
+import os
 from cam_capture import CameraCapture
 from cam_stream import CameraStream
 from cam_calib import CameraCalibration
 import threading
 import time
 import sys
-
-def run_arguments():
-    edge_length = None
-    n_height = None
-    n_width = None
-    save_calib = False
-    debug = False
-    
-    parser = argparse.ArgumentParser(description='Camera calibration script.')
-    parser.add_argument('-d', help='Enable debug options: delays, prints, debug windows.')
-    parser.add_argument('-s', '--edge_length', type=float, help='Edge length in cm')
-    parser.add_argument('-v', '--vertical_squares', type=int, help='Number of inner squares vertically.')
-    parser.add_argument('-hz', '--horizontal_squares', type=int, help='Number of inner squares horizontally.')
-    parser.add_argument('--save_calib', help='Save calibration images.')
-    
-    args = parser.parse_args()
-
-    # Assign passed values
-    if args.d != None:
-        debug = True
-    elif args.edge_length != None:
-        edge_length = args.edge_length
-    elif args.vertical_squares != None:
-        n_height = args.vertical_squares
-    elif args.horizontal_squares != None:
-        n_width = args.horizontal_squares
-    elif args.save_calib != None:
-        save_calib = True
-    
-    return debug, edge_length, n_height, n_width, save_calib
 
 def create_gstreamer_pipeline(
     sensor_id=0,
@@ -64,21 +34,25 @@ def create_gstreamer_pipeline(
     )
 
 if __name__ == "__main__":
-    # Get runtime arguments
-    debug, edge_length, n_height, n_width, save_calib = run_arguments()
+    # Path for calibration results
+    file_dir_path = os.path.abspath(os.path.dirname(__file__))
     
+    # Create camera calibration object
+    cam_calib = CameraCalibration() 
+    
+    if len(cam_calib.check_for_calibration_files(os.path.join(file_dir_path, 'calib_data'))) != 4:
+        print('Missing calibration data. Exiting...')
+        sys.exit(-1)
+      
     # Create GStreamer pipeline
     g_pipe = create_gstreamer_pipeline()
 
     # Create Camera capture object
-    cam_cap = CameraCapture(g_pipe, debug=debug)
+    cam_cap = CameraCapture(g_pipe)
     
     # Create streaming object
-    cam_stream = CameraStream(debug=debug)
-    
-    # Create camera calibration object
-    cam_calib = CameraCalibration(save_calib = True, debug=debug)
-        
+    cam_stream = CameraStream()
+      
     # Start camera streaming
     # Create a thread and attach the method that captures the image frames, to it
     stream_thread = threading.Thread(target=cam_stream.start, daemon=True)
@@ -92,13 +66,10 @@ if __name__ == "__main__":
     while not cam_calib.finished_collecting_samples():
         try:
             original_frame = cam_cap.latest_frame()
-            cam_calib.find_checkerboard_corners(original_frame)
-            ret, corner_frame = cam_calib.get_corner_image()
-            
-            if ret:
-                frame = cam_cap.encode_frame(frame=corner_frame)
-            else:
-                frame = cam_cap.encode_frame(frame=original_frame)
+
+            # TODO: Add undistorsion
+
+            frame = cam_cap.encode_frame(frame=original_frame)
             
             cam_stream.push_frame(frame) 
 
@@ -110,7 +81,6 @@ if __name__ == "__main__":
     
     cam_cap.stop()
     cam_stream.stop()
-    cam_calib.calibration(original_frame)
 
     sys.exit(0)
                 
