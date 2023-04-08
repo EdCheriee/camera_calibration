@@ -30,7 +30,10 @@ class CameraCalibration:
         self.imgpoints = [] # 2D points in image plane
         
         # List of names for saving calibration files
-        self.calibration_file_names = ['cam_matrix.txt', 'dist_coeffs.txt', 'r_vecs.txt', 't_vecs.txt'] 
+        self.calibration_file_names = ['cam_matrix.txt',
+                                       'dist_coeffs.txt',
+                                       'r_vecs.txt',
+                                       't_vecs.txt'] 
         
         # Calibration matrices
         self.newcammat = None
@@ -54,29 +57,32 @@ class CameraCalibration:
       
         
     def _find_checkerboard_corners(self, frame):
-    
-        # Convert to grayscale
-        gray_scale_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    
-        # Locate the corners
-        ret, corners = cv2.findChessboardCorners(gray_scale_frame, self.checkerboard_size, None)
         
-        # If corners are found, add object points and image points
-        if ret == True:
-            # if self.debug:
-            print("Found corners.")
-            self.objpoints.append(self.objp)
-            corners2 = cv2.cornerSubPix(gray_scale_frame, corners, (11, 11), (-1, -1), self.criteria)
-            self.imgpoints.append(corners2)
-
-            self.image_counter+=1
+        if frame is not None:
+            # Convert to grayscale
+            gray_scale_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        
+            # Locate the corners
+            ret, corners = cv2.findChessboardCorners(gray_scale_frame, self.checkerboard_size, None)
             
-            # Draw and display the corners
-            self.draw_checkerboard_corners(gray_scale_frame, corners2, ret)
-            self.found_corners = True
+            # If corners are found, add object points and image points
+            if ret == True:
+                # if self.debug:
+                print("Found corners.")
+                self.objpoints.append(self.objp)
+                corners2 = cv2.cornerSubPix(gray_scale_frame, corners, (11, 11), (-1, -1), self.criteria)
+                self.imgpoints.append(corners2)
+
+                self.image_counter+=1
+                
+                # Draw and display the corners
+                self.draw_checkerboard_corners(gray_scale_frame, corners2, ret)
+                self.found_corners = True
+            else:
+                # if self.debug:
+                print("Not found corners.")
         else:
-            # if self.debug:
-            print("Not found corners.")
+            print('Non valid frame passed, going to the next frame.')
 
     def get_new_cam_matrix(self, root_folder_path: str = '', width: int = 1920, height: int = 1080):
         if not root_folder_path:
@@ -160,7 +166,6 @@ class CameraCalibration:
             calibration_file_paths.append(file_path)
             
         return calibration_file_paths
-    
     
     def finished_collecting_samples(self):
         if self.image_counter >= self.calib_image_goal:

@@ -44,13 +44,15 @@ class CameraCapture:
             else:
                 return self.frame
     
-    def encode_frame(self, frame):    
-        success_encode, encoded_frame = cv2.imencode('.jpg', frame)
+    def encode_frame(self, frame):
+        if frame is not None:  
+            success_encode, encoded_frame = cv2.imencode('.jpg', frame)
+            
+            if self.debug:
+                print('Encoding frame.')
+            
+            if not success_encode:
+                return None
+            else:
+                return bytearray(encoded_frame)
         
-        if self.debug:
-            print('Encoding frame.')
-        
-        if not success_encode:
-            return None
-        else:
-            return bytearray(encoded_frame)

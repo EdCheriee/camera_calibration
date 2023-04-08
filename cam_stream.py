@@ -31,6 +31,7 @@ class CameraStream():
         self.stop()
         
     def run(self, host='0.0.0.0'):
+        print('Streaming to host: %s:%s' % (host, self.port))
         self.app.run(host=host, port=self.port)
         
     def generate_frame(self):

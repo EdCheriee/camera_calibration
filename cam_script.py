@@ -23,7 +23,7 @@ def run_arguments():
     args = parser.parse_args()
 
     # Assign passed values
-    if args.d != None:
+    if args.d:
         debug = True
     elif args.edge_length != None:
         edge_length = args.edge_length
@@ -40,9 +40,9 @@ def create_gstreamer_pipeline(
     sensor_id=0,
     capture_width=1920,
     capture_height=1080,
-    display_width=960,
-    display_height=540,
-    framerate=10,
+    display_width=1920,
+    display_height=1080,
+    framerate=30,
     flip_method=2,
 ):
     return (
@@ -92,6 +92,7 @@ if __name__ == "__main__":
     while not cam_calib.finished_collecting_samples():
         try:
             original_frame = cam_cap.latest_frame()
+
             cam_calib.find_checkerboard_corners(original_frame)
             ret, corner_frame = cam_calib.get_corner_image()
             
@@ -102,12 +103,14 @@ if __name__ == "__main__":
             
             cam_stream.push_frame(frame) 
 
-            # if debug:
-            time.sleep(1) 
-    # Perform calibration                
+            time.sleep(1)
+            
         except KeyboardInterrupt:
             cam_stream.stop()
-    
+            cam_cap.stop()
+            sys.exit(-1)
+       
+    # Perform calibration                
     cam_cap.stop()
     cam_stream.stop()
     cam_calib.calibration(original_frame)
