@@ -55,4 +55,16 @@ class CameraCapture:
                 return None
             else:
                 return bytearray(encoded_frame)
-        
+            
+    def load_image(self, image_path):
+        return cv2.imread(image_path)
+    
+    def save_image(self, image_name, path_to_save_in):
+
+        with lock:
+            if self.frame is not None: 
+                calibration_image_path =  os.path.join(path_to_save_in, image_name)  
+                cv2.imwrite(calibration_image_path, self.frame, [cv2.IMWRITE_PNG_COMPRESSION, 3])
+                return True
+            else:
+                return False

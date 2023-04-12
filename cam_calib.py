@@ -3,6 +3,7 @@ import numpy as np
 import threading
 import os
 import sys
+import shutil
 
 lock = threading.Lock()
 
@@ -104,9 +105,6 @@ class CameraCalibration:
         else:
             return None
         
-    # def reprojection_error(self, undistorted_frame):
-        
-
     def calibration(self, frame):
         if len(frame.shape) > 2:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -123,9 +121,9 @@ class CameraCalibration:
         file_dir_path = os.path.abspath(os.path.dirname(__file__))
         calib_data_path = os.path.join(file_dir_path, 'calib_data')
 
-        
-        if not os.path.exists(calib_data_path):
-            os.mkdir(calib_data_path)
+        if os.path.exists(calib_data_path):
+            shutil.rmtree(calib_data_path)
+        os.mkdir(calib_data_path)
 
         # Remove old files of previous calibrations
         calibration_file_paths = self.check_for_calibration_files(root_folder_path=calib_data_path, remove_file=True)
@@ -152,7 +150,6 @@ class CameraCalibration:
         else:
             return [None, None, None, None]
           
-
     def check_for_calibration_files(self, root_folder_path: str = '', remove_file: bool = False):
         calibration_file_paths = []
         
