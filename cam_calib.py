@@ -41,7 +41,7 @@ class CameraCalibration:
         self.cam_mat = None
         self.dist_coeff = None
         self.rvecs = None
-        self.rvecs = None
+        self.tvecs = None
             
     def find_checkerboard_corners(self, frame):
         if self.run_with_cuda:
@@ -55,7 +55,16 @@ class CameraCalibration:
             
     def draw_checkerboard_corners(self, frame, corners, ret):
         self.frame = cv2.drawChessboardCorners(frame, self.checkerboard_size, corners, ret)
-      
+    
+    def reprojection_error(self):
+        mean_error = 0
+        
+        for i in range(len(self.objpoints)):
+            imgpoints, _ = cv2.projectPoints(self.objpoints[i], self.rvecs[i], self.tvecs[i], self.cam_mat, self.dist_coeff)
+            error = cv2.norm(self.imgpoints, imgpoints, cv2.NORM_L2)/len(imgpoints)
+            mean_error += error
+            
+        print("REPROJECTION_ERROR: {}".format(mean_error/len(self.objpoints)))
         
     def _find_checkerboard_corners(self, frame):
         
@@ -99,8 +108,9 @@ class CameraCalibration:
         self.newcammat = cv2.getOptimalNewCameraMatrix(self.cam_mat, self.dist_coeff, (width, height), 1, (width, height))
                    
     def undistortion(self, frame):
+        
         if self.cam_mat is not None and self.dist_coeff is not None and self.newcammat is not None:
-            undistorted_frame = cv2.undistort(frame, self.cam_mat, self.dist_coeff)
+            undistorted_frame = cv2.undistort(frame, self.cam_mat, self.dist_coeff, None)
             return undistorted_frame           
         else:
             return None

@@ -14,8 +14,8 @@ def create_gstreamer_pipeline(
     sensor_id=0,
     capture_width=WIDTH,
     capture_height=HEIGHT,
-    display_width=WIDTH/2,
-    display_height=HEIGHT/2,
+    display_width=WIDTH,
+    display_height=HEIGHT,
     framerate=10,
     flip_method=2,
 ):
@@ -64,8 +64,6 @@ if __name__ == "__main__":
     # Start the thread
     stream_thread.start()
     capturing_thread.start()
-    
-    
     
     # Collect enough images
     while True:

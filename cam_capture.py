@@ -64,7 +64,7 @@ class CameraCapture:
         with lock:
             if self.frame is not None: 
                 calibration_image_path =  os.path.join(path_to_save_in, image_name)  
-                cv2.imwrite(calibration_image_path, self.frame, [cv2.IMWRITE_PNG_COMPRESSION, 3])
+                cv2.imwrite(calibration_image_path, self.frame, [cv2.IMWRITE_JPEG_OPTIMIZE , 1])
                 return True
             else:
                 return False

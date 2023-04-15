@@ -25,7 +25,6 @@ def run_arguments():
     edge_length = None
     n_height = None
     n_width = None
-    save_calib = False
     calibration_mode = None
     debug = False
     
@@ -35,7 +34,6 @@ def run_arguments():
     parser.add_argument('-s', '--edge_length', type=float, help='Edge length in cm')
     parser.add_argument('-vs', '--vertical_squares', type=int, help='Number of inner squares vertically.')
     parser.add_argument('-hs', '--horizontal_squares', type=int, help='Number of inner squares horizontally.')
-    parser.add_argument('--save_calib', help='Save calibration images.')
     
     args = parser.parse_args()
 
@@ -52,10 +50,8 @@ def run_arguments():
         n_height = args.vertical_squares
     elif args.horizontal_squares != None:
         n_width = args.horizontal_squares
-    elif args.save_calib != None:
-        save_calib = True
     
-    return debug, calibration_mode, edge_length, n_height, n_width, save_calib
+    return debug, calibration_mode, edge_length, n_height, n_width
 
 def create_gstreamer_pipeline(
     sensor_id=0,
@@ -115,6 +111,25 @@ def run_live_calibration(cam_cap, cam_calib, cam_stream):
 
     return cam_cap.latest_frame()
 
+def run_prerecorded_calibration(cam_cap, cam_calib, cam_stream):
+    images = load_images(cam_cap)
+    
+    for image in images:   
+        try:
+            
+            frame = calibration_and_encoding(image, cam_calib, cam_cap)
+            
+            cam_stream.push_frame(frame) 
+
+            time.sleep(2)
+            
+        except KeyboardInterrupt:
+            cam_stream.stop()
+            cam_cap.stop()
+            sys.exit(-1)
+    
+    return image
+
 def run_collect_images(cam_cap, cam_stream):
     
     # Set the terminal to raw mode to read keys without waiting for Enter to be pressed
@@ -139,10 +154,15 @@ def run_collect_images(cam_cap, cam_stream):
             if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
                 key = sys.stdin.read(1)
                 if key == 's':
-                    calibration_image_name = 'image_' + str(saved_images) + '.png'
+                    calibration_image_name = 'image_' + str(saved_images) + '.jpg'
                     if cam_cap.save_image(calibration_image_name, calibration_image_directory):
                         saved_images += 1
-                    print('Capturing...\r')
+                    print('\rNumber of saved images: %d' % saved_images)
+                elif key == 'q':
+                    print('\rQuit command received early, this will exit the script...')
+                    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+                    sys.exit(0)
+                
             time.sleep(0.2)
         
         termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
@@ -158,27 +178,9 @@ def run_collect_images(cam_cap, cam_stream):
         termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
         sys.exit(-1)
     
-def run_prerecorded_calibration():
-    images_paths = load_images()
-    
-    for image_path in images_paths:   
-        try:
-            original_frame = cam_cap.load_image(image_path)
 
-            frame = calibration_and_encoding(original_frame, cam_calib, cam_cap)
-            
-            cam_stream.push_frame(frame) 
 
-            time.sleep(2)
-            
-        except KeyboardInterrupt:
-            cam_stream.stop()
-            cam_cap.stop()
-            sys.exit(-1)
-    
-    return original_frame
-
-def load_images():
+def load_images(cam_cap):
     image_extensions = ['.jpg', '.jpeg', '.bmp', '.png']
     recorded_images_for_calib = os.path.join(script_dir, 'calib_images')
     
@@ -189,17 +191,13 @@ def load_images():
         print('No images found in calib_images.')
         sys.exit(-1)
     else:
-        images = os.listdir(recorded_images_for_calib)
-        for image in images:
-            filename, file_extension = os.path.splitext(image)
-            if file_extension not in image_extensions:
-                print('File %s is not of correct image type. The file type is %s' % (filename, file_extension))
-                sys.exit(-1)
+        images = [cam_cap.load_image(os.path.join(recorded_images_for_calib, image)) for image in os.listdir(recorded_images_for_calib)]
+
         return images
 
 if __name__ == "__main__":
     # Get runtime arguments
-    debug, calibration_mode, edge_length, n_height, n_width, save_calib = run_arguments()
+    debug, calibration_mode, edge_length, n_height, n_width = run_arguments()
     
     # Create GStreamer pipeline
     g_pipe = create_gstreamer_pipeline()
@@ -226,7 +224,7 @@ if __name__ == "__main__":
     if calibration_mode is ScriptRunningModes.STREAM_CALIBRATION:
         last_image = run_live_calibration(cam_cap, cam_calib, cam_stream)
     elif calibration_mode is ScriptRunningModes.CALIBRATION_ON_PRERECORDED_IMAGES:
-        last_image = run_prerecorded_calibration(cam_calib, cam_stream)
+        last_image = run_prerecorded_calibration(cam_cap, cam_calib, cam_stream)
     elif calibration_mode is ScriptRunningModes.COLLECT_CALIBRATION_IMAGES:
         run_collect_images(cam_cap, cam_stream)
     else:
@@ -239,6 +237,7 @@ if __name__ == "__main__":
     
     if calibration_mode is not ScriptRunningModes.COLLECT_CALIBRATION_IMAGES:
         cam_calib.calibration(last_image)
+        cam_calib.reprojection_error()
 
     sys.exit(0)
                 
