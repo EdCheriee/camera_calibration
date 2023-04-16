@@ -6,22 +6,27 @@ This tool is made for doing calibration on machines that don't have screen and y
 
 The calibration script comes with these possible arguments:
 ```
-usage: cam_script.py [-h] [-d] [-s EDGE_LENGTH] [-vs VERTICAL_SQUARES]
-                     [-hs HORIZONTAL_SQUARES] [--save_calib SAVE_CALIB]
+usage: cam_script.py [-h] [-d] -c CALIBRATION_MODE [-s EDGE_LENGTH]
+                     [-vs VERTICAL_SQUARES] [-hs HORIZONTAL_SQUARES]
 
 Camera calibration script.
 
+required argument:
+  -c, CALIBRATION MODE  Select operational mode of the calibration 
+                        script:
+                        - STREAM_CALIBRATION (1) -> performing live calibration using streamed footage.
+                        - CALIBRATION_ON_PRERECORDED_IMAGES (2) -> perform calibration using images saved in calib_images directory
+                        - COLLECT_CALIBRATION_IMAGES (3) -> collect number of images for using offline calibration afterwards.
+
 optional arguments:
-  -h, --help            show this help message and exit
+  -h, --help            show this help message and exit.
   -d                    Enable debug options: delays, prints, debug windows.
   -s EDGE_LENGTH, --edge_length EDGE_LENGTH
-                        Edge length in cm
+                        Edge length in cm.
   -vs VERTICAL_SQUARES, --vertical_squares VERTICAL_SQUARES
                         Number of inner squares vertically.
   -hs HORIZONTAL_SQUARES, --horizontal_squares HORIZONTAL_SQUARES
                         Number of inner squares horizontally.
-  --save_calib SAVE_CALIB
-                        Save calibration images.
 ```
 
 ## Calibration results

@@ -199,6 +199,10 @@ if __name__ == "__main__":
     # Get runtime arguments
     debug, calibration_mode, edge_length, n_height, n_width = run_arguments()
     
+    if calibration_mode is None:
+        print('Incorrect mode selected. Exiting...')
+        sys.exit(-1)
+    
     # Create GStreamer pipeline
     g_pipe = create_gstreamer_pipeline()
 
@@ -227,9 +231,7 @@ if __name__ == "__main__":
         last_image = run_prerecorded_calibration(cam_cap, cam_calib, cam_stream)
     elif calibration_mode is ScriptRunningModes.COLLECT_CALIBRATION_IMAGES:
         run_collect_images(cam_cap, cam_stream)
-    else:
-        print('Incorrect mode selected. Exiting...')
-        sys.exit(-1)
+
        
     # Perform calibration                
     cam_cap.stop()
