@@ -12,7 +12,7 @@ usage: cam_script.py [-h] [-d] -c CALIBRATION_MODE [-s EDGE_LENGTH]
 Camera calibration script.
 
 required argument:
-  -c, CALIBRATION MODE  Select operational mode of the calibration 
+  -c, CALIBRATION MODE  Select operational mode (the integer value) of the calibration 
                         script:
                         - STREAM_CALIBRATION (1) -> performing live calibration using streamed footage.
                         - CALIBRATION_ON_PRERECORDED_IMAGES (2) -> perform calibration using images saved in calib_images directory
